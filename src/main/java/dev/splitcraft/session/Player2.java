@@ -36,6 +36,8 @@ public class Player2 extends ServerPlayer {
     public volatile Pad2Input input = Pad2Input.NONE;
     private volatile PendingMenu pendingMenu;
     private final UUID hostId;
+    private final MinecraftServer splitServer;
+    private final FakeConnection fakeConnection;
     private boolean wasUse;
     private int respawnDelay;
     private BlockPos breakPos; private float breakProgress;
@@ -43,13 +45,15 @@ public class Player2 extends ServerPlayer {
     private Player2(MinecraftServer server, ServerLevel level, GameProfile profile, ClientInformation info, UUID hostId) {
         super(server, level, profile, info);
         this.hostId = hostId;
+        this.splitServer = server;
+        this.fakeConnection = new FakeConnection();
     }
 
     public static Player2 spawn(MinecraftServer server, ServerPlayer host) {
         GameProfile profile = new GameProfile(UUID.nameUUIDFromBytes("splitcraft-player2".getBytes()), SplitConfig.player2Name());
         ClientInformation info = ClientInformation.createDefault();
         Player2 p = new Player2(server, (ServerLevel) host.level(), profile, info, host.getUUID());
-        server.getPlayerList().placeNewPlayer(new FakeConnection(), p, new CommonListenerCookie(profile, 0, info, false));
+        server.getPlayerList().placeNewPlayer(p.fakeConnection, p, new CommonListenerCookie(profile, 0, info, false));
         p.teleportToHost(host);
         p.setGameMode(host.gameMode.getGameModeForPlayer());
         return p;
@@ -58,7 +62,8 @@ public class Player2 extends ServerPlayer {
     private void teleportToHost(ServerPlayer host) {
         teleportTo((ServerLevel) host.level(), host.getX() + 1.0, host.getY(), host.getZ(), java.util.Set.of(), host.getYRot(), 0f, false);
     }
-    public void despawn() { server.getPlayerList().remove(this); }
+    public MinecraftServer splitServer() { return splitServer; }
+    public void despawn() { splitServer.getPlayerList().remove(this); }
     public PendingMenu takePendingMenu() { PendingMenu p = pendingMenu; pendingMenu = null; return p; }
 
     /** Crafting tables, chests, furnaces... call this. The packet to the (non-existent) client is swallowed; we hand the menu to the client tick instead. */
@@ -100,11 +105,11 @@ public class Player2 extends ServerPlayer {
         super.tick();
         doTick();                                    // normally called by the network listener, which P2 doesn't have
         setYRot(savedYaw); setYHeadRot(savedYaw);    // undo the yaw trick before the tracker sends rotation to the client
-        if (tickCount % 20 == 0) { ((FakeConnection) connection.connection).fake.outboundMessages().clear(); connection.resetPosition(); }
+        if (tickCount % 20 == 0) { fakeConnection.fake.outboundMessages().clear(); connection.resetPosition(); }
     }
 
     private void revive() {
-        ServerPlayer host = server.getPlayerList().getPlayer(hostId);
+        ServerPlayer host = splitServer.getPlayerList().getPlayer(hostId);
         if (host == null) return;
         dead = false; deathTime = 0; respawnDelay = 0;
         setHealth(getMaxHealth());
