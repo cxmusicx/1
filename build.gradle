@@ -1,15 +1,34 @@
-plugins { id 'fabric-loom' version '1.14-SNAPSHOT' }   // 1.21.11 is still obfuscated -> classic loom plugin id
+plugins { id 'fabric-loom' version '1.14-SNAPSHOT' }
+
 version = project.mod_version
 group = 'dev.splitcraft'
 base { archivesName = 'splitcraft' }
-repositories { maven { url = 'https://maven.isxander.dev/releases' } }
+
+repositories {
+    maven { url = 'https://maven.isxander.dev/releases' }
+    maven {
+        name = 'Modrinth'
+        url = 'https://api.modrinth.com/maven'
+    }
+}
+
 dependencies {
     minecraft "com.mojang:minecraft:${project.minecraft_version}"
     mappings loom.officialMojangMappings()
     modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
     modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-    modImplementation files('libs/controlify-3_0_1_lts_1_21_11-fabric.jar')
+    // Published Controlify 3.0.1 LTS for Fabric 1.21.11; the old checked-in JAR was only 2 bytes.
+    modImplementation "maven.modrinth:DOUdJVEm:qZW7FPjm"
 }
-processResources { inputs.property 'version', project.version; filesMatching('fabric.mod.json') { expand 'version': project.version } }
-java { sourceCompatibility = JavaVersion.VERSION_21; targetCompatibility = JavaVersion.VERSION_21; withSourcesJar() }
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') { expand 'version': project.version }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+    withSourcesJar()
+}
 tasks.withType(JavaCompile).configureEach { options.release = 21 }
