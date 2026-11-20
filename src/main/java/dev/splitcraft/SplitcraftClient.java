@@ -2,7 +2,6 @@ package dev.splitcraft;
 
 import dev.splitcraft.config.SplitConfig;
 import dev.splitcraft.input.PadScanner;
-import dev.splitcraft.mixin.ScreenInvoker;
 import dev.splitcraft.pairing.PairingScreen;
 import dev.splitcraft.session.SplitSession;
 import net.fabricmc.api.ClientModInitializer;
@@ -28,7 +27,7 @@ public class SplitcraftClient implements ClientModInitializer {
                 else mc.setScreen(new PairingScreen(screen, (p1, p2) -> SplitSession.start(mc, p1, p2)));
             }).bounds(10, h - 30, 110, 20).build();
             b.active = active || pads >= 2;
-            ((ScreenInvoker) screen).splitcraft$addWidget(b);
+            screen.addRenderableWidget(b);
         });
 
         ClientTickEvents.END_CLIENT_TICK.register(SplitSession::clientTick);
