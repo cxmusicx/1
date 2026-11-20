@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "splitcraft",
+  "version": "${version}",
+  "name": "Splitcraft",
+  "description": "Local 2-player split-screen with Xbox / Switch Pro controllers. Standalone mod that depends on Controlify for controller access.",
+  "environment": "client",
+  "entrypoints": { "client": ["dev.splitcraft.SplitcraftClient"] },
+  "mixins": ["splitcraft.mixins.json"],
+  "depends": { "fabricloader": ">=0.18.0", "minecraft": "~1.21.11", "java": ">=21", "fabric-api": "*", "controlify": ">=3.0.1" }
+}

@@ -1,0 +1,16 @@
+{
+  "required": true,
+  "package": "dev.splitcraft.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": [
+    "ConnectionAccessor",
+    "ScreenInvoker",
+    "MinecraftAccessor",
+    "WindowMixin",
+    "GameRendererMixin",
+    "ControlifyMixin",
+    "ItemInHandRendererMixin",
+    "MultiPlayerGameModeMixin"
+  ],
+  "injectors": { "defaultRequire": 1 }
+}
