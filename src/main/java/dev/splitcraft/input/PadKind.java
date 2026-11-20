@@ -2,7 +2,7 @@ package dev.splitcraft.input;
 
 public enum PadKind {
     XBOX("Xbox Controller", "LB", "RB", "A", "B", "Menu"),
-    SWITCH_PRO("Switch Pro Controller", "L", "R", "A", "B", "+"),
+    SWITCH_PRO("Switch Pro Controller", "L", "R", "B", "A", "+"),
     OTHER("Controller", "L1", "R1", "A", "B", "Start");
 
     public final String label, left, right, confirm, back, start;
