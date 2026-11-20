@@ -1,5 +1,13 @@
 plugins { id 'fabric-loom' version '1.14-SNAPSHOT' }
 
+loom {
+    mixin {
+        // Generate and remap mixin references for the obfuscated 1.21.11 runtime.
+        useLegacyMixinAp = true
+        defaultRefmapName = "splitcraft.refmap.json"
+    }
+}
+
 version = project.mod_version
 group = 'dev.splitcraft'
 base { archivesName = 'splitcraft' }
