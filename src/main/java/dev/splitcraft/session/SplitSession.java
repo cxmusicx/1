@@ -70,7 +70,7 @@ public final class SplitSession {
             p2Mirror = new RemotePlayer(mc.level, serverPlayer.getGameProfile());
             p2Mirror.setId(serverPlayer.getId());
             p2Mirror.setUUID(serverPlayer.getUUID());
-            mc.level.addPlayer(serverPlayer.getId(), p2Mirror);
+            mc.level.addEntity(serverPlayer.getId(), p2Mirror);
         }
         p2Mirror.setPos(serverPlayer.getX(), serverPlayer.getY(), serverPlayer.getZ());
         p2Mirror.setYRot(serverPlayer.getYRot());
