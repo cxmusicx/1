@@ -57,7 +57,7 @@ public final class SplitSession {
     public static void p2Button(int id) {
         Player2 sp = p2;
         if (sp == null) return;
-        sp.server.execute(() -> { sp.containerMenu.clickMenuButton(sp, id); sp.containerMenu.broadcastChanges(); });
+        sp.splitServer().execute(() -> { sp.containerMenu.clickMenuButton(sp, id); sp.containerMenu.broadcastChanges(); });
     }
 
     public static void clientTick(Minecraft mc) {
@@ -76,7 +76,7 @@ public final class SplitSession {
             if (mc.screen != p2ScreenObj) {                       // closed -> give Controlify back to P1, close P2's menu server-side
                 p2Screen = false; p2ScreenObj = null;
                 Controlify.instance().setCurrentController(pad1.entity, true);
-                sp.server.execute(sp::closeContainer);
+                sp.splitServer().execute(sp::closeContainer);
             } else if (mc.screen instanceof InventoryScreen && cp2 instanceof Player cp) {   // inventory screen uses the client mirror
                 var cm = cp.inventoryMenu; var sm = sp.inventoryMenu;
                 for (int i = 0; i < cm.slots.size(); i++) {
@@ -90,7 +90,7 @@ public final class SplitSession {
         Player2.PendingMenu pm = sp.takePendingMenu();               // P2 right-clicked a crafting table / chest / furnace ...
         if (pm != null && mc.screen == null) {
             Screen scr = P2Screens.create(pm.menu(), pm.title(), sp.getInventory());
-            if (scr == null) sp.server.execute(sp::closeContainer);   // unsupported menu type
+            if (scr == null) sp.splitServer().execute(sp::closeContainer);   // unsupported menu type
             else { openP2Screen(mc, scr); sp.input = Player2.Pad2Input.NONE; prevInvBtn = invBtn; return; }
         }
         if (invBtn && !prevInvBtn && mc.screen == null && cp2 instanceof Player cp) {
