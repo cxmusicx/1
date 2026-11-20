@@ -1,6 +1,5 @@
 package dev.splitcraft.mixin;
 
-import dev.splitcraft.input.PadScanner;
 import dev.splitcraft.pairing.PairingScreen;
 import dev.splitcraft.session.SplitSession;
 import net.minecraft.client.Minecraft;
@@ -22,18 +21,14 @@ public abstract class PauseScreenMixin extends Screen {
     @Inject(method = "init", at = @At("TAIL"))
     private void splitcraft$addButton(CallbackInfo ci) {
         Minecraft mc = Minecraft.getInstance();
-        if (!mc.hasSingleplayerServer() || mc.getSingleplayerServer().isPublished()) return;
+
+        // The integrated server remains available when a singleplayer world is opened to LAN.
+        // Do not gate access on controller detection: let users open pairing and see what is detected.
+        if (!mc.hasSingleplayerServer()) return;
 
         boolean active = SplitSession.active();
-        int pads = 0;
-        try {
-            PadScanner scanner = new PadScanner();
-            scanner.refresh();
-            pads = scanner.pads().size();
-        } catch (Throwable ignored) {}
-
         Button button = Button.builder(
-            Component.literal(active ? "Stop Split Screen" : "Split Screen"),
+            Component.literal(active ? "Stop Split Screen" : "Split Screen / Pair Controllers"),
             btn -> {
                 if (active) {
                     SplitSession.stop(mc);
@@ -43,8 +38,7 @@ public abstract class PauseScreenMixin extends Screen {
                         (p1, p2) -> SplitSession.start(mc, p1, p2)));
                 }
             }
-        ).bounds(10, this.height - 30, 110, 20).build();
-        button.active = active || pads >= 2;
+        ).bounds(10, 10, 190, 20).build();
         this.addRenderableWidget(button);
     }
 }
