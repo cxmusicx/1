@@ -4,7 +4,7 @@ import dev.isxander.controlify.Controlify;
 import dev.isxander.controlify.controller.ControllerEntity;
 import java.util.*;
 
-/** Finds connected Xbox / Switch Pro pads via Controlify's SDL3 controller manager. */
+/** Finds connected gamepads through Controlify's SDL3 controller manager. */
 public final class PadScanner {
     private final Map<String, Pad> pads = new LinkedHashMap<>();
 
@@ -13,7 +13,6 @@ public final class PadScanner {
     /** Call every client tick while the pairing screen is open (or in-game). Handles hot-plug. */
     public void refresh() {
         Set<String> seen = new HashSet<>();
-        // Controlify exposes getControllerManager() (checked in the jar). If it returns Optional vs plain, adjust here.
         List<ControllerEntity> connected = Controlify.instance().getControllerManager().orElseThrow().getConnectedControllers();
         for (ControllerEntity e : connected) {
             seen.add(e.uid());
@@ -24,11 +23,16 @@ public final class PadScanner {
     }
 
     static PadKind classify(ControllerEntity e) {
-        // Controlify resolves vendor/product IDs to a namespace (controller_identification.json5):
-        // "controlify:xbox_one", "controlify:switch", ...
-        String ns = e.info().type().namespace().toString();
-        if (ns.contains("xbox")) return PadKind.XBOX;
-        if (ns.contains("switch")) return PadKind.SWITCH_PRO;
+        // Controlify's registered namespace is the primary identifier. Include the info's
+        // display representation as a fallback because some Nintendo pads are registered
+        // under a generic SDL/gamepad namespace rather than "switch".
+        String namespace = e.info().type().namespace().toString().toLowerCase(Locale.ROOT);
+        String details = String.valueOf(e.info()).toLowerCase(Locale.ROOT);
+        String id = namespace + " " + details;
+        if (id.contains("xbox")) return PadKind.XBOX;
+        if (id.contains("switch") || id.contains("nintendo") || id.contains("joy-con") || id.contains("joycon")) {
+            return PadKind.SWITCH_PRO;
+        }
         return PadKind.OTHER;
     }
 }
