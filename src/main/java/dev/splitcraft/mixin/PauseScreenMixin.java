@@ -6,6 +6,7 @@ import dev.splitcraft.session.SplitSession;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.PauseScreen;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -13,7 +14,11 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(PauseScreen.class)
-public abstract class PauseScreenMixin {
+public abstract class PauseScreenMixin extends Screen {
+    protected PauseScreenMixin(Component title) {
+        super(title);
+    }
+
     @Inject(method = "init", at = @At("TAIL"))
     private void splitcraft$addButton(CallbackInfo ci) {
         Minecraft mc = Minecraft.getInstance();
@@ -38,14 +43,8 @@ public abstract class PauseScreenMixin {
                         (p1, p2) -> SplitSession.start(mc, p1, p2)));
                 }
             }
-        ).bounds(10, this.splitcraft$getHeight() - 30, 110, 20).build();
+        ).bounds(10, this.height - 30, 110, 20).build();
         button.active = active || pads >= 2;
-        this.splitcraft$addRenderableWidget(button);
+        this.addRenderableWidget(button);
     }
-
-    @org.spongepowered.asm.mixin.Shadow
-    protected abstract int getHeight();
-
-    @org.spongepowered.asm.mixin.Shadow
-    protected abstract <T extends net.minecraft.client.gui.components.events.GuiEventListener & net.minecraft.client.gui.components.Renderable & net.minecraft.client.gui.narration.NarratableEntry> T addRenderableWidget(T widget);
 }
