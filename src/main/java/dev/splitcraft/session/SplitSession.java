@@ -51,7 +51,7 @@ public final class SplitSession {
     public static void p2Click(int slot, int button, ClickType type) {
         Player2 sp = p2;
         if (sp == null) return;
-        sp.server.execute(() -> { sp.containerMenu.clicked(slot, button, type, sp); sp.containerMenu.broadcastChanges(); });
+        sp.splitServer().execute(() -> { sp.containerMenu.clicked(slot, button, type, sp); sp.containerMenu.broadcastChanges(); });
     }
 
     public static void p2Button(int id) {
