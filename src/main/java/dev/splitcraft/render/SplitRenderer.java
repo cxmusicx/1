@@ -17,21 +17,17 @@ import net.minecraft.world.entity.Entity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/**
- * Draws the frame once per player, copies the results into the window target side by side / stacked,
- * then draws any open screen on top at full size.
- *
- * RESIZE mode: each view is rendered at viewport size (window size is faked while drawing).
- * CROP mode:   each view is rendered at normal window size and the middle is copied out. No size tricks at all.
- * If RESIZE throws, we log it, switch to CROP automatically and keep going. If CROP throws, split-screen stops.
- */
+/** Renders each player into a private target, then composites the two viewports. */
 public final class SplitRenderer {
     private static final Logger LOG = LoggerFactory.getLogger("splitcraft");
-    public static volatile int ovW, ovH;   // read by WindowMixin (only non-zero in RESIZE mode)
-    public static volatile int pass = -1;  // 0 / 1 while a player's view is drawn, else -1
+    public static volatile int ovW, ovH;
+    public static volatile int pass = -1;
     private static boolean busy;
     private static int sizedW, sizedH;
     private static final RenderTarget[] targets = new RenderTarget[2];
+    private static RenderTarget uiTarget;
+    private static Screen initializedScreen;
+    private static int initializedScreenW = -1, initializedScreenH = -1;
 
     public static boolean renderSplit(GameRenderer gr, DeltaTracker dt, boolean renderLevel) {
         Minecraft mc = Minecraft.getInstance();
@@ -66,36 +62,88 @@ public final class SplitRenderer {
         return true;
     }
 
-    private static void draw(Minecraft mc, GameRenderer gr, DeltaTracker dt, boolean renderLevel, RenderTarget real, Entity p2, Screen screenBefore) {
+    private static void draw(Minecraft mc, GameRenderer gr, DeltaTracker dt, boolean renderLevel,
+                             RenderTarget real, Entity p2, Screen screenBefore) {
         int fw = real.width, fh = real.height;
         boolean resize = SplitConfig.renderMode() == RenderMode.RESIZE;
-        SplitLayout l0 = SplitLayout.forPlayer(0, SplitConfig.orientation(), fw, fh);
-        if (resize) ensureInternalSize(mc, l0.w(), l0.h()); else restoreInternalSize(mc);
+        SplitLayout first = SplitLayout.forPlayer(0, SplitConfig.orientation(), fw, fh);
+        if (resize) ensureInternalSize(mc, first.w(), first.h()); else restoreInternalSize(mc);
 
         var enc = RenderSystem.getDevice().createCommandEncoder();
         enc.clearColorTexture(real.getColorTexture(), 0xFF000000);
-        mc.screen = null;                                   // screens are drawn once, on top, after both world passes
+        mc.screen = null;
         for (int i = 0; i < 2; i++) {
             SplitLayout l = SplitLayout.forPlayer(i, SplitConfig.orientation(), fw, fh);
             int tw = resize ? l.w() : fw, th = resize ? l.h() : fh;
             RenderTarget t = target(i, tw, th);
-            enc.clearColorAndDepthTextures(t.getColorTexture(), 0, t.getDepthTexture(), 1.0);
+            enc.clearColorAndDepthTextures(t.getColorTexture(), 0xFF000000, t.getDepthTexture(), 1.0);
             if (resize) { ovW = l.w(); ovH = l.h(); }
             pass = i;
             ((MinecraftAccessor) mc).splitcraft$setMainRenderTarget(t);
             mc.setCameraEntity(i == 0 ? mc.player : p2);
-            gr.render(dt, renderLevel);                     // re-enters; `busy` makes our hook step aside
+            gr.render(dt, renderLevel);
             ((MinecraftAccessor) mc).splitcraft$setMainRenderTarget(real);
             ovW = ovH = 0; pass = -1;
-            int srcX = (tw - l.w()) / 2, srcY = (th - l.h()) / 2;   // 0 in RESIZE mode, centre crop in CROP mode
-            enc.copyTextureToTexture(t.getColorTexture(), real.getColorTexture(), 0, l.x(), fh - l.y() - l.h(), srcX, srcY, l.w(), l.h()); // GL is bottom-left origin
+            copyViewport(enc, t, real, l, fw, fh, resize);
+        }
+
+        // A Minecraft Screen is global, so render it into only the viewport belonging to its owner.
+        // The other player's already-composited viewport remains untouched and fully playable.
+        if (screenBefore != null) {
+            int owner = SplitSession.p2ScreenOpen() ? 1 : 0;
+            SplitLayout l = SplitLayout.forPlayer(owner, SplitConfig.orientation(), fw, fh);
+            RenderTarget worldTarget = targets[owner];
+            RenderTarget overlay = resize ? worldTarget : uiTarget(l.w(), l.h());
+            if (!resize) {
+                int srcX = (fw - l.w()) / 2;
+                int srcY = (fh - l.h()) / 2;
+                enc.copyTextureToTexture(worldTarget.getColorTexture(), overlay.getColorTexture(),
+                        0, 0, 0, srcX, srcY, l.w(), l.h());
+                enc.clearColorAndDepthTextures(overlay.getColorTexture(), 0xFF000000,
+                        overlay.getDepthTexture(), 1.0);
+                // Restore the cropped world image after clearing the overlay's depth buffer.
+                enc.copyTextureToTexture(worldTarget.getColorTexture(), overlay.getColorTexture(),
+                        0, 0, 0, srcX, srcY, l.w(), l.h());
+            }
+            ovW = l.w(); ovH = l.h(); pass = owner;
+            ((MinecraftAccessor) mc).splitcraft$setMainRenderTarget(overlay);
+            mc.setCameraEntity(owner == 0 ? mc.player : p2);
+            mc.screen = screenBefore;
+            mc.options.hideGui = true;
+            int guiW = (int) Math.ceil((double) l.w() / mc.getWindow().getGuiScale());
+            int guiH = (int) Math.ceil((double) l.h() / mc.getWindow().getGuiScale());
+            if (initializedScreen != screenBefore || initializedScreenW != guiW || initializedScreenH != guiH) {
+                screenBefore.init(mc, guiW, guiH);
+                initializedScreen = screenBefore;
+                initializedScreenW = guiW;
+                initializedScreenH = guiH;
+            }
+            gr.render(dt, false);
+            ((MinecraftAccessor) mc).splitcraft$setMainRenderTarget(real);
+            ovW = ovH = 0; pass = -1;
+            copyViewport(enc, overlay, real, l, fw, fh, true);
+        } else {
+            initializedScreen = null;
+            initializedScreenW = initializedScreenH = -1;
         }
         mc.screen = screenBefore;
         mc.setCameraEntity(mc.player);
-        if (screenBefore != null) {                         // overlay pass: just the screen, full window, no HUD / world
-            mc.options.hideGui = true;
-            gr.render(dt, false);
+    }
+
+    private static void copyViewport(com.mojang.blaze3d.systems.CommandEncoder enc, RenderTarget src,
+                                     RenderTarget dst, SplitLayout l, int fw, int fh, boolean alreadySized) {
+        int srcX = alreadySized ? 0 : (src.width - l.w()) / 2;
+        int srcY = alreadySized ? 0 : (src.height - l.h()) / 2;
+        enc.copyTextureToTexture(src.getColorTexture(), dst.getColorTexture(), 0,
+                l.x(), fh - l.y() - l.h(), srcX, srcY, l.w(), l.h());
+    }
+
+    private static RenderTarget uiTarget(int w, int h) {
+        if (uiTarget == null || uiTarget.width != w || uiTarget.height != h) {
+            if (uiTarget != null) uiTarget.destroyBuffers();
+            uiTarget = new TextureTarget("splitcraft_ui", w, h, true);
         }
+        return uiTarget;
     }
 
     private static void notice(Minecraft mc, String msg) {
@@ -116,11 +164,13 @@ public final class SplitRenderer {
         sizedW = sizedH = 0;
     }
 
-    /** Call when split-screen ends. */
     public static void reset(Minecraft mc) {
         try { restoreInternalSize(mc); } catch (Throwable ignored) {}
         sizedW = sizedH = 0;
         for (int i = 0; i < 2; i++) if (targets[i] != null) { targets[i].destroyBuffers(); targets[i] = null; }
+        if (uiTarget != null) { uiTarget.destroyBuffers(); uiTarget = null; }
+        initializedScreen = null;
+        initializedScreenW = initializedScreenH = -1;
     }
 
     private static RenderTarget target(int i, int w, int h) {
