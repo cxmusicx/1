@@ -113,7 +113,7 @@ public final class SplitRenderer {
             int guiW = (int) Math.ceil((double) l.w() / mc.getWindow().getGuiScale());
             int guiH = (int) Math.ceil((double) l.h() / mc.getWindow().getGuiScale());
             if (initializedScreen != screenBefore || initializedScreenW != guiW || initializedScreenH != guiH) {
-                screenBefore.init(mc, guiW, guiH);
+                screenBefore.init(guiW, guiH);
                 initializedScreen = screenBefore;
                 initializedScreenW = guiW;
                 initializedScreenH = guiH;
