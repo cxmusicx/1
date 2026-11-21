@@ -135,7 +135,7 @@ public final class SplitRenderer {
         int srcX = alreadySized ? 0 : (src.width - l.w()) / 2;
         int srcY = alreadySized ? 0 : (src.height - l.h()) / 2;
         enc.copyTextureToTexture(src.getColorTexture(), dst.getColorTexture(), 0,
-                l.x(), fh - l.y() - l.h(), srcX, srcY, l.w(), l.h());
+                l.x(), l.y(), srcX, srcY, l.w(), l.h());
     }
 
     private static RenderTarget uiTarget(int w, int h) {
