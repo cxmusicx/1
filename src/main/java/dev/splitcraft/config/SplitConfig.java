@@ -21,9 +21,18 @@ public final class SplitConfig {
     private static String player2Name = "Player2";
     private static float lookSpeed = 200f, lookCurve = 1.8f, lookSensH = 1.0f, lookSensV = 0.9f, deadzone = 0.12f;
     private static boolean toggleSprint = true, toggleSneak = true;
+    private static float lookSpeed = 200f, lookCurve = 1.8f, lookSensH = 1.0f, lookSensV = 0.9f, deadzone = 0.12f;
+    private static boolean toggleSprint = true, toggleSneak = true;
     public static Orientation orientation() { return orientation; }
     public static RenderMode renderMode() { return renderMode; }
     public static String player2Name() { return player2Name; }
+    public static float lookSpeed() { return lookSpeed; }
+    public static float lookCurve() { return lookCurve; }
+    public static float lookSensH() { return lookSensH; }
+    public static float lookSensV() { return lookSensV; }
+    public static float deadzone() { return deadzone; }
+    public static boolean toggleSprint() { return toggleSprint; }
+    public static boolean toggleSneak() { return toggleSneak; }
     public static float lookSpeed() { return lookSpeed; }
     public static float lookCurve() { return lookCurve; }
     public static float lookSensH() { return lookSensH; }
