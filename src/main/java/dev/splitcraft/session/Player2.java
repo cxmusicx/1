@@ -12,6 +12,7 @@ import net.minecraft.server.network.CommonListenerCookie;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.MenuProvider;
 import net.minecraft.world.entity.Pose;
+import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -92,19 +93,26 @@ public class Player2 extends ServerPlayer {
         if (in.use() && !wasUse) handleUse();
         wasUse = in.use();
 
-        // --- analog movement: players only take digital Input, so walk "forward" along the stick direction by
-        // temporarily rotating yaw, and scale speed by stick magnitude through the base speed attribute.
+        // A fake ServerPlayer has no client connection to send movement packets. Apply its
+        // controller movement directly through vanilla collision-aware movement instead.
         float mag = Math.min(1f, (float) Math.hypot(in.moveX(), in.moveY()));
         boolean moving = mag > 0.01f;
-        float savedYaw = getYRot();
-        if (moving) setYRot(savedYaw + (float) Math.toDegrees(Math.atan2(in.moveX(), in.moveY())));
-        setLastClientInput(new Input(moving, false, false, false, in.jump(), in.sneak(), in.sprint() && moving)); // VERIFY: Input record shape
-        var speed = getAttribute(Attributes.MOVEMENT_SPEED);
-        if (speed != null) speed.setBaseValue(BASE_SPEED * (moving ? Math.max(0.3f, mag) : 1f));
-
         super.tick();
+        if (onGround()) {
+            Vec3 v = getDeltaMovement();
+            setDeltaMovement(v.x, in.jump() ? 0.42 : 0.0, v.z);
+        }
+        if (moving) {
+            float speed = (float) getAttributeValue(Attributes.MOVEMENT_SPEED);
+            if (in.sprint()) speed *= 1.3f;
+            moveRelative(speed, new Vec3(in.moveX(), 0.0, in.moveY()));
+        }
+        Vec3 velocity = getDeltaMovement();
+        if (!onGround()) velocity = velocity.add(0.0, -0.08, 0.0);
+        move(MoverType.SELF, velocity);
+        Vec3 afterMove = getDeltaMovement();
+        setDeltaMovement(afterMove.x * 0.91, afterMove.y * 0.98, afterMove.z * 0.91);
         doTick();                                    // normally called by the network listener, which P2 doesn't have
-        setYRot(savedYaw); setYHeadRot(savedYaw);    // undo the yaw trick before the tracker sends rotation to the client
         if (tickCount % 20 == 0) { fakeConnection.fake.outboundMessages().clear(); connection.resetPosition(); }
     }
 
